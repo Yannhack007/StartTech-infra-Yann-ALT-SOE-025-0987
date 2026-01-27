@@ -1,5 +1,5 @@
 module "networking" {
-  source = "./modules/networking"
+  source                    = "./modules/networking"
   project_name              = "starttech"
   vpc_cidr                  = "10.0.0.0/16"
   public_subnet_cidrs       = ["10.0.1.0/24", "10.0.2.0/24"]
@@ -20,9 +20,9 @@ module "compute" {
 }
 
 module "storage" {
-  source              = "./modules/storage"
-  project_name        = "starttech"
-  environment         = "prod"
+  source               = "./modules/storage"
+  project_name         = "starttech"
+  environment          = "prod"
   frontend_bucket_name = "starttech-frontend-prod"
 }
 
@@ -35,11 +35,11 @@ module "caching" {
 }
 
 module "monitoring" {
-  source         = "./modules/monitoring"
-  project_name   = "starttech"
-  environment    = "prod"
-  backend_asg_id = module.compute.asg_id
-  alb_arn        = module.compute.alb_arn
+  source             = "./modules/monitoring"
+  project_name       = "starttech"
+  environment        = "prod"
+  backend_asg_id     = module.compute.asg_id
+  alb_arn            = module.compute.alb_arn
   log_retention_days = 30
 }
 

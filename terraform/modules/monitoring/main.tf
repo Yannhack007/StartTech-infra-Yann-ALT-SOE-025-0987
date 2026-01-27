@@ -31,10 +31,10 @@ resource "aws_cloudwatch_log_group" "alb" {
 
 # Alarm CPU > 80% for backend ASG
 resource "aws_cloudwatch_metric_alarm" "backend_high_cpu" {
-  alarm_name          = "${var.project_name}-backend-high-cpu"
-  alarm_description   = "CPU > 80% sur backend"
-  namespace           = "AWS/EC2"
-  metric_name         = "CPUUtilization"
+  alarm_name        = "${var.project_name}-backend-high-cpu"
+  alarm_description = "CPU > 80% sur backend"
+  namespace         = "AWS/EC2"
+  metric_name       = "CPUUtilization"
   dimensions = {
     AutoScalingGroupName = var.backend_asg_id
   }
@@ -48,10 +48,10 @@ resource "aws_cloudwatch_metric_alarm" "backend_high_cpu" {
 
 # Alarm pour 5xx ALB > 5%
 resource "aws_cloudwatch_metric_alarm" "alb_5xx" {
-  alarm_name          = "${var.project_name}-alb-5xx"
-  alarm_description   = "Plus de 5% de 5xx sur ALB"
-  namespace           = "AWS/ApplicationELB"
-  metric_name         = "HTTPCode_Target_5XX_Count"
+  alarm_name        = "${var.project_name}-alb-5xx"
+  alarm_description = "Plus de 5% de 5xx sur ALB"
+  namespace         = "AWS/ApplicationELB"
+  metric_name       = "HTTPCode_Target_5XX_Count"
   dimensions = {
     LoadBalancer = var.alb_arn
   }
