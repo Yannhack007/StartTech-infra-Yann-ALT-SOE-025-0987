@@ -1,0 +1,34 @@
+{
+  "widgets": [
+    {
+      "type": "metric",
+      "x": 0,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "AWS/EC2", "CPUUtilization", "AutoScalingGroupName", "backend-asg" ]
+        ],
+        "period": 300,
+        "stat": "Average",
+        "title": "Backend CPU"
+      }
+    },
+    {
+      "type": "metric",
+      "x": 12,
+      "y": 0,
+      "width": 12,
+      "height": 6,
+      "properties": {
+        "metrics": [
+          [ "AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", "alb-arn" ]
+        ],
+        "period": 300,
+        "stat": "Sum",
+        "title": "ALB 5XX Errors"
+      }
+    }
+  ]
+}
