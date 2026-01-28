@@ -73,10 +73,21 @@ jobs:
           echo " Starting Terraform Plan..."
           echo "========================================="
           
-          # Run terraform plan and capture exit code
-          # Exit codes: 0=no changes, 1=error, 2=changes detected
-          terraform plan -detailed-exitcode -out=tfplan
-          PLAN_EXIT_CODE=$?
+          # Run terraform plan and capture output
+          terraform plan -detailed-exitcode -out=tfplan > plan_output.txt 2>&1 || true
+          cat plan_output.txt
+          
+          # Force exit code based on plan content
+          if grep -q "Plan: [1-9]" plan_output.txt; then
+            PLAN_EXIT_CODE=2
+            echo "CHANGES DETECTED - Forcing exit code 2"
+          elif grep -q "No changes" plan_output.txt; then
+            PLAN_EXIT_CODE=0
+            echo "NO CHANGES - Exit code 0"
+          else
+            PLAN_EXIT_CODE=1
+            echo "ERROR DETECTED - Exit code 1"
+          fi
           
           echo "exitcode=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
           
