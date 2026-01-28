@@ -74,7 +74,7 @@ jobs:
           echo "========================================="
           
           # Run terraform plan and capture output
-          terraform plan -detailed-exitcode -out=tfplan > plan_output.txt 2>&1 || true
+          terraform plan -detailed-exitcode -no-color -out=tfplan > plan_output.txt 2>&1 || true
           cat plan_output.txt
           
           # Force exit code based on plan content
