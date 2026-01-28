@@ -36,7 +36,7 @@ resource "aws_security_group" "mongodb" {
 
 # MongoDB EC2 Instance
 resource "aws_instance" "mongodb" {
-  ami                    = data.aws_ami.amazon_linux_2.id
+  ami                    = data.aws_ami.amazon_linux.id
   instance_type          = "t3.small"
   subnet_id              = module.networking.private_data_subnet_ids[0]
   vpc_security_group_ids = [aws_security_group.mongodb.id]
@@ -61,20 +61,4 @@ resource "aws_instance" "mongodb" {
 output "mongodb_endpoint" {
   description = "MongoDB instance private IP"
   value       = aws_instance.mongodb.private_ip
-}
-
-# Get AMI data
-data "aws_ami" "amazon_linux_2" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["amzn2-ami-hvm-*"]
-  }
-
-  filter {
-    name   = "root-device-type"
-    values = ["ebs"]
-  }
 }

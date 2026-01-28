@@ -1,4 +1,20 @@
 data "aws_region" "current" {}
+
+data "aws_ami" "amazon_linux" {
+  most_recent = true
+  owners      = ["amazon"]
+
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+  }
+
+  filter {
+    name   = "root-device-type"
+    values = ["ebs"]
+  }
+}
+
 module "networking" {
   source                    = "./modules/networking"
   project_name              = "starttech"
@@ -17,7 +33,7 @@ module "compute" {
   backend_sg_id      = module.networking.backend_sg_id
   alb_sg_id          = module.networking.alb_sg_id
   instance_type      = "t3.micro"
-  ami_id             = data.aws_ami.amazon-linux.id
+  ami_id             = data.aws_ami.amazon_linux.id
 }
 
 module "storage" {
