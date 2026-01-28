@@ -40,7 +40,7 @@ module "storage" {
   source               = "./modules/storage"
   project_name         = "starttech"
   environment          = "prod"
-  frontend_bucket_name = "starttech-frontend-prod"
+  frontend_bucket_name = var.frontend_bucket_name
 }
 
 module "caching" {
