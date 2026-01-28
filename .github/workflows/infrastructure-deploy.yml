@@ -74,10 +74,8 @@ jobs:
           
           # Run terraform plan and capture exit code
           # Exit codes: 0=no changes, 1=error, 2=changes detected
-          set +e
-          terraform plan -detailed-exitcode -out=tfplan
-          PLAN_EXIT_CODE=$?
-          set -e
+          # Use && || to capture both success and failure exit codes
+          terraform plan -detailed-exitcode -out=tfplan && PLAN_EXIT_CODE=$? || PLAN_EXIT_CODE=$?
           
           echo "exitcode=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
           
