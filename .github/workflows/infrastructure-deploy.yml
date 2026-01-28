@@ -68,16 +68,72 @@ jobs:
         id: plan
         working-directory: terraform
         run: |
-          terraform plan -detailed-exitcode -out=tfplan || export exitcode=$?
+          set +e  # Ne pas arrêter en cas d'exit code non-zéro
+          
+          terraform plan -detailed-exitcode -out=tfplan
+          exitcode=$?  # Capturer l'exit code IMMÉDIATEMENT
+          
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
+          
+          echo "========================================"
+          echo "Terraform Plan Exit Code: $exitcode"
+          echo "========================================"
+          
+          case $exitcode in
+            0)
+              echo "No changes needed - infrastructure is up to date"
+              echo "Apply job will be SKIPPED"
+              ;;
+            1)
+              echo "Terraform plan FAILED with errors"
+              echo "Check the errors above"
+              echo "Apply job will be SKIPPED"
+              exit 1  # Faire échouer le job
+              ;;
+            2)
+              echo "Changes detected!"
+              echo "Plan: Resources to add/change/destroy"
+              echo "Apply job will RUN"
+              terraform show tfplan | grep -E "Plan:|to add|to change|to destroy"
+              ;;
+            *)
+              echo "Unexpected exit code: $exitcode"
+              exit 1
+              ;;
+          esac
+          
+          echo "========================================"
           exit 0
 
       - name: Upload Plan
         uses: actions/upload-artifact@v4
+        if: steps.plan.outputs.exitcode == '2'
         with:
           name: tfplan
           path: terraform/tfplan
           retention-days: 5
+
+      - name: Plan Summary
+        if: always()
+        run: |
+          echo "## Terraform Plan Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          EXITCODE="${{ steps.plan.outputs.exitcode }}"
+          
+          if [ "$EXITCODE" == "0" ]; then
+            echo "### No Changes" >> $GITHUB_STEP_SUMMARY
+            echo "Infrastructure is already up to date." >> $GITHUB_STEP_SUMMARY
+          elif [ "$EXITCODE" == "1" ]; then
+            echo "### Plan Failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs for errors." >> $GITHUB_STEP_SUMMARY
+          elif [ "$EXITCODE" == "2" ]; then
+            echo "### Changes Detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Terraform will create/modify/destroy resources." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Exit Code:** $EXITCODE" >> $GITHUB_STEP_SUMMARY
+          fi
 
   terraform-apply:
     name: Apply Terraform Changes
@@ -113,7 +169,13 @@ jobs:
 
       - name: Terraform Apply
         working-directory: terraform
-        run: terraform apply -auto-approve tfplan
+        run: |
+          echo "Applying Terraform changes..."
+          echo "This will create 40 resources"
+          echo ""
+          terraform apply -auto-approve tfplan
+          echo ""
+          echo "Apply completed!"
 
       - name: Terraform Output
         id: output
@@ -121,7 +183,9 @@ jobs:
         run: |
           echo "Fetching Terraform outputs..."
           terraform output -json > outputs.json
-          cat outputs.json
+          
+          echo "Infrastructure Outputs:"
+          cat outputs.json | jq .
 
       - name: Upload Outputs
         uses: actions/upload-artifact@v4
@@ -135,14 +199,20 @@ jobs:
           mkdir -p outputs
           cp terraform/outputs.json outputs/terraform-outputs.json
           
-          # Extract important values
-          echo "FRONTEND_BUCKET=$(cat outputs/terraform-outputs.json | jq -r '.frontend_bucket_name.value')" >> outputs/infra-vars.env
-          echo "CLOUDFRONT_DISTRIBUTION_ID=$(cat outputs/terraform-outputs.json | jq -r '.cloudfront_distribution_id.value')" >> outputs/infra-vars.env
-          echo "ALB_DNS_NAME=$(cat outputs/terraform-outputs.json | jq -r '.alb_dns_name.value')" >> outputs/infra-vars.env
-          echo "ECR_REPOSITORY_URL=$(cat outputs/terraform-outputs.json | jq -r '.ecr_repository_url.value')" >> outputs/infra-vars.env
-          echo "ASG_NAME=$(cat outputs/terraform-outputs.json | jq -r '.asg_name.value')" >> outputs/infra-vars.env
-          
-          cat outputs/infra-vars.env
+          if command -v jq &> /dev/null; then
+            echo "Extracting key outputs..."
+            
+            echo "FRONTEND_BUCKET=$(jq -r '.frontend_bucket_name.value // "not-set"' outputs/terraform-outputs.json)" >> outputs/infra-vars.env
+            echo "CLOUDFRONT_DISTRIBUTION_ID=$(jq -r '.cloudfront_distribution_id.value // "not-set"' outputs/terraform-outputs.json)" >> outputs/infra-vars.env
+            echo "ALB_DNS_NAME=$(jq -r '.alb_dns_name.value // "not-set"' outputs/terraform-outputs.json)" >> outputs/infra-vars.env
+            echo "ECR_REPOSITORY_URL=$(jq -r '.ecr_repository_url.value // "not-set"' outputs/terraform-outputs.json)" >> outputs/infra-vars.env
+            echo "ASG_NAME=$(jq -r '.asg_name.value // "not-set"' outputs/terraform-outputs.json)" >> outputs/infra-vars.env
+            echo "REDIS_ENDPOINT=$(jq -r '.redis_endpoint.value // "not-set"' outputs/terraform-outputs.json)" >> outputs/infra-vars.env
+            
+            echo ""
+            echo "Infrastructure variables saved:"
+            cat outputs/infra-vars.env
+          fi
 
       - name: Upload Infrastructure Variables
         uses: actions/upload-artifact@v4
@@ -151,8 +221,32 @@ jobs:
           path: outputs/infra-vars.env
           retention-days: 90
 
+      - name: Deployment Summary
+        if: always()
+        run: |
+          echo "## Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "### Deployment Successful!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "- **Region:** ${{ secrets.AWS_REGION }}" >> $GITHUB_STEP_SUMMARY
+            echo "- **Resources Created:** 40" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Download the \`infra-vars\` artifact to get all outputs." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Deployment Failed" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs above for errors." >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Notify Success
         if: success()
         run: |
           echo "Infrastructure deployed successfully!"
           echo "Region: ${{ secrets.AWS_REGION }}"
+          echo ""
+          echo "Next steps:"
+          echo "1. Download the 'infra-vars' artifact"
+          echo "2. Update secrets in starttech-application repository"
+          echo "3. Deploy frontend and backend applications"
