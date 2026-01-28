@@ -67,6 +67,7 @@ jobs:
       - name: Terraform Plan
         id: plan
         working-directory: terraform
+        shell: bash {0}
         run: |
           echo "========================================="
           echo " Starting Terraform Plan..."
@@ -74,8 +75,8 @@ jobs:
           
           # Run terraform plan and capture exit code
           # Exit codes: 0=no changes, 1=error, 2=changes detected
-          # Use && || to capture both success and failure exit codes
-          terraform plan -detailed-exitcode -out=tfplan && PLAN_EXIT_CODE=$? || PLAN_EXIT_CODE=$?
+          terraform plan -detailed-exitcode -out=tfplan
+          PLAN_EXIT_CODE=$?
           
           echo "exitcode=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
           
