@@ -141,39 +141,45 @@ jobs:
           echo " Starting Terraform Plan..."
           echo "========================================="
           
-          # Run terraform plan and capture output
-          terraform plan -detailed-exitcode -no-color -out=tfplan > plan_output.txt 2>&1 || PLAN_RESULT=$?
-          PLAN_RESULT=${PLAN_RESULT:-$?}
-          cat plan_output.txt
+          # Run terraform plan with detailed exit codes
+          # Exit codes: 0=no changes, 1=error, 2=changes detected
+          terraform plan -detailed-exitcode -no-color -out=tfplan > plan_output.txt 2>&1
+          PLAN_RESULT=$?
           
-          # Terraform exit codes:
-          # 0 = no changes
-          # 1 = error
-          # 2 = changes detected
+          cat plan_output.txt
           
           echo ""
           echo "========================================="
           echo "Terraform Plan Exit Code: $PLAN_RESULT"
           echo "========================================="
           
+          # Verify exit code by checking plan output as fallback
+          if [ $PLAN_RESULT -eq 0 ]; then
+            if grep -q "Plan: [0-9]" plan_output.txt && ! grep -q "Plan: 0 to add" plan_output.txt; then
+              echo "Plan output shows changes but exit code is 0. Forcing exit code to 2."
+              PLAN_RESULT=2
+            fi
+          fi
+          
+          echo "Final Exit Code: $PLAN_RESULT"
           echo "exitcode=$PLAN_RESULT" >> $GITHUB_OUTPUT
           
           case $PLAN_RESULT in
             0)
-              echo "✅ No changes detected - infrastructure is up to date"
+              echo "No changes detected - infrastructure is up to date"
               ;;
             1)
-              echo "❌ Terraform plan FAILED - Check errors above"
+              echo "Terraform plan FAILED - Check errors above"
               exit 1
               ;;
             2)
-              echo "✅ Changes detected - Will apply on main branch"
+              echo "Changes detected - Will apply on main branch"
               echo ""
               echo "Showing plan summary..."
               terraform show tfplan | grep -E "Plan:|# |will be created|will be updated|will be destroyed" | head -50 || true
               ;;
             *)
-              echo "⚠️ Unexpected exit code: $PLAN_RESULT"
+              echo "Unexpected exit code: $PLAN_RESULT"
               exit 1
               ;;
           esac
