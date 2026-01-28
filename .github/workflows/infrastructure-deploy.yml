@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  TERRAFORM_VERSION: 1.14.3
+  TERRAFORM_VERSION: 1.6.6
 
 jobs:
   terraform-validate:
@@ -148,7 +148,8 @@ jobs:
     name: Apply Terraform Changes
     runs-on: ubuntu-latest
     needs: terraform-plan
-    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch'
+    if: needs.terraform-plan.outputs.tfplanExitCode == '2' &&
+      (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
     environment: production
     steps:
       - name: Checkout repository
@@ -175,6 +176,7 @@ jobs:
         with:
           name: tfplan
           path: terraform
+
 
       - name: Terraform Apply
         working-directory: terraform
