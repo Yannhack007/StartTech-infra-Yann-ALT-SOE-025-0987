@@ -12,7 +12,16 @@
         ],
         "period": 300,
         "stat": "Average",
-        "title": "Backend CPU"
+        "region": "eu-north-1",
+        "title": "Backend CPU",
+        "annotations": {
+          "horizontal": [
+            {
+              "value": 80,
+              "label": "High CPU Threshold"
+            }
+          ]
+        }
       }
     },
     {
@@ -27,7 +36,16 @@
         ],
         "period": 300,
         "stat": "Sum",
-        "title": "ALB 5XX Errors"
+        "region": "eu-north-1",
+        "title": "ALB 5XX Errors",
+        "annotations": {
+          "horizontal": [
+            {
+              "value": 5,
+              "label": "Error Threshold"
+            }
+          ]
+        }
       }
     }
   ]

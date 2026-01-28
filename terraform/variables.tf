@@ -43,7 +43,7 @@ variable "private_data_subnet_cidrs" {
 variable "frontend_bucket_name" {
   description = "S3 bucket name for frontend (must be globally unique)"
   type        = string
-  default     = "starttech-frontend-prod"
+  default     = "starttech-frontend-prod-yann-biko"
 }
 
 variable "backend_instance_type" {
