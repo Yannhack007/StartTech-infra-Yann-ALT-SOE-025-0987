@@ -101,8 +101,9 @@ jobs:
               echo ""
               echo "Showing plan summary..."
               terraform show tfplan | grep -E "Plan:|# |will be created|will be updated|will be destroyed" | head -50
-              ;;
               exit 2
+              ;;
+              
             *)
               echo "Unexpected exit code: $PLAN_EXIT_CODE"
               exit 1
