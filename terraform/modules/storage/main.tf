@@ -29,28 +29,23 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
   }
 }
 
-resource "aws_s3_bucket_acl" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
-  acl    = "private"
-
-  depends_on = [aws_s3_bucket_public_access_block.frontend]
-}
-
 resource "aws_s3_bucket_policy" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
   policy = jsonencode({
     Version = "2012-10-17"
-    StatSid = "AllowCloudFrontAccess"
-    Effect  = "Allow"
-    Principal = {
-      AWS = aws_cloudfront_origin_access_identity.frontend.iam_arn
-    }
-    Action   = "s3:GetObject"
-    Resource = "${aws_s3_bucket.frontend.arn}/*"
-    }
-
-  )
+    Statement = [
+      {
+        Sid    = "AllowCloudFrontAccess"
+        Effect = "Allow"
+        Principal = {
+          AWS = aws_cloudfront_origin_access_identity.frontend.iam_arn
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.frontend.arn}/*"
+      }
+    ]
+  })
 
   depends_on = [aws_s3_bucket_public_access_block.frontend]
 }
