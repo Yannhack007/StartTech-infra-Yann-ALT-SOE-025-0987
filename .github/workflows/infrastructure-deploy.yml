@@ -100,7 +100,6 @@ jobs:
             0)
               echo "No changes - infrastructure is up to date"
               echo "Apply job will be SKIPPED"
-              exit 0
               ;;
             1)
               echo "Terraform plan FAILED"
@@ -113,7 +112,6 @@ jobs:
               echo ""
               echo "Showing plan summary..."
               terraform show tfplan | grep -E "Plan:|# |will be created|will be updated|will be destroyed" | head -50
-              exit 2
               ;;
               
             *)
