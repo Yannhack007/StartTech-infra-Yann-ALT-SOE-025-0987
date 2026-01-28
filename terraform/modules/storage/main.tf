@@ -41,15 +41,15 @@ resource "aws_s3_bucket_policy" "frontend" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    StatSid     = "AllowCloudFrontAccess"
-        Effect  = "Allow"
-        Principal = {
-          AWS = aws_cloudfront_origin_access_identity.frontend.iam_arn
-        }
-        Action   = "s3:GetObject"
-        Resource = "${aws_s3_bucket.frontend.arn}/*"
-      }
-    
+    StatSid = "AllowCloudFrontAccess"
+    Effect  = "Allow"
+    Principal = {
+      AWS = aws_cloudfront_origin_access_identity.frontend.iam_arn
+    }
+    Action   = "s3:GetObject"
+    Resource = "${aws_s3_bucket.frontend.arn}/*"
+    }
+
   )
 
   depends_on = [aws_s3_bucket_public_access_block.frontend]
@@ -57,9 +57,9 @@ resource "aws_s3_bucket_policy" "frontend" {
 
 # CloudFront Origin Access Identity
 resource "aws_cloudfront_origin_access_identity" "frontend" {
-  comment = "OAI for ${var.project_name} frontend"  
-    
-  }
+  comment = "OAI for ${var.project_name} frontend"
+
+}
 
 resource "aws_cloudfront_distribution" "frontend" {
   origin {

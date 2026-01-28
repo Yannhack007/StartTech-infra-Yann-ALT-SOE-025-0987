@@ -58,12 +58,12 @@ resource "aws_lb_listener" "https" {
 */
 
 resource "aws_launch_template" "backend" {
-  name_prefix            = "${var.project_name}-backend-lt-"
-  image_id               = data.aws_ami.amazon_linux.id
-  instance_type          = var.instance_type
+  name_prefix   = "${var.project_name}-backend-lt-"
+  image_id      = data.aws_ami.amazon_linux.id
+  instance_type = var.instance_type
 
   user_data = base64encode(file("${path.root}/../scripts/user-data.sh"))
-  
+
   iam_instance_profile {
     name = aws_iam_instance_profile.backend.name
   }
@@ -102,19 +102,19 @@ resource "aws_autoscaling_group" "backend" {
 
 
 data "aws_ami" "amazon-linux" {
- most_recent = true
+  most_recent = true
 
 
- filter {
-   name   = "owner-alias"
-   values = ["amazon"]
- }
+  filter {
+    name   = "owner-alias"
+    values = ["amazon"]
+  }
 
 
- filter {
-   name   = "name"
-   values = ["amzn2-ami-hvm*"]
- }
+  filter {
+    name   = "name"
+    values = ["amzn2-ami-hvm*"]
+  }
 }
 
 

@@ -98,12 +98,12 @@ output "ecr_repository_name" {
 output "deployment_summary" {
   description = "Summary of deployed resources"
   value = {
-    backend_url         = "http://${module.compute.alb_dns_name}"
-    frontend_url        = "https://${module.storage.cloudfront_domain_name}"
-    redis_endpoint      = module.caching.redis_endpoint
-    log_group_backend   = module.monitoring.backend_log_group_name
-    ecr_repository_url  = aws_ecr_repository.backend.repository_url
-    region              = data.aws_region.current.name
-    environment         = var.environment
+    backend_url        = "http://${module.compute.alb_dns_name}"
+    frontend_url       = "https://${module.storage.cloudfront_domain_name}"
+    redis_endpoint     = module.caching.redis_endpoint
+    log_group_backend  = module.monitoring.backend_log_group_name
+    ecr_repository_url = aws_ecr_repository.backend.repository_url
+    region             = data.aws_region.current.name
+    environment        = var.environment
   }
 }

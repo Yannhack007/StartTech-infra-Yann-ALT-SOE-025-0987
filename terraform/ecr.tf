@@ -36,10 +36,10 @@ resource "aws_ecr_lifecycle_policy" "backend" {
         rulePriority = 2
         description  = "Remove untagged images after 7 days"
         selection = {
-          tagStatus          = "untagged"
-          countType          = "sinceImagePushed"
-          countUnit          = "days"
-          countNumber        = 7
+          tagStatus   = "untagged"
+          countType   = "sinceImagePushed"
+          countUnit   = "days"
+          countNumber = 7
         }
         action = {
           type = "expire"
