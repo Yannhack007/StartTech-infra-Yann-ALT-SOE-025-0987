@@ -1,0 +1,37 @@
+# Configuration example - copy to terraform.tfvars and update values
+
+# Basic Configuration
+aws_region   = "eu-north-1"
+project_name = "starttech"
+environment  = "prod"
+
+# Networking
+vpc_cidr                  = "10.0.0.0/16"
+public_subnet_cidrs       = ["10.0.1.0/24", "10.0.2.0/24"]
+private_app_subnet_cidrs  = ["10.0.11.0/24", "10.0.12.0/24"]
+private_data_subnet_cidrs = ["10.0.21.0/24", "10.0.22.0/24"]
+
+# Frontend
+frontend_bucket_name = "starttech-frontend-prod-YOUR-ACCOUNT-ID"
+
+# Backend Compute
+backend_instance_type        = "t3.micro"
+backend_asg_min_size         = 2
+backend_asg_max_size         = 4
+backend_asg_desired_capacity = 2
+
+# Monitoring
+log_retention_days = 30
+
+# MongoDB Configuration
+enable_mongodb_atlas = true
+# If using Atlas, set this to your connection string:
+# mongodb_atlas_connection_string = "mongodb+srv://user:password@cluster.mongodb.net/database"
+
+# Common Tags
+tags = {
+  Project     = "starttech"
+  ManagedBy   = "terraform"
+  CostCenter  = "engineering"
+  Environment = "production"
+}

@@ -7,6 +7,16 @@ resource "aws_s3_bucket" "frontend" {
   }
 }
 
+# Block public access
+resource "aws_s3_bucket_public_access_block" "frontend" {
+  bucket = aws_s3_bucket.frontend.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
 resource "aws_s3_bucket_website_configuration" "frontend" {
   bucket = aws_s3_bucket.frontend.id
 
@@ -21,7 +31,9 @@ resource "aws_s3_bucket_website_configuration" "frontend" {
 
 resource "aws_s3_bucket_acl" "frontend" {
   bucket = aws_s3_bucket.frontend.id
-  acl    = "public-read"
+  acl    = "private"
+
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
 }
 
 resource "aws_s3_bucket_policy" "frontend" {
@@ -29,27 +41,33 @@ resource "aws_s3_bucket_policy" "frontend" {
 
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect    = "Allow"
-        Principal = "*"
-        Action    = "s3:GetObject"
-        Resource  = "${aws_s3_bucket.frontend.arn}/*"
+    StatSid     = "AllowCloudFrontAccess"
+        Effect  = "Allow"
+        Principal = {
+          AWS = aws_cloudfront_origin_access_identity.frontend.iam_arn
+        }
+        Action   = "s3:GetObject"
+        Resource = "${aws_s3_bucket.frontend.arn}/*"
       }
-    ]
-  })
+    
+  )
+
+  depends_on = [aws_s3_bucket_public_access_block.frontend]
 }
+
+# CloudFront Origin Access Identity
+resource "aws_cloudfront_origin_access_identity" "frontend" {
+  comment = "OAI for ${var.project_name} frontend"  
+    
+  }
 
 resource "aws_cloudfront_distribution" "frontend" {
   origin {
     domain_name = aws_s3_bucket.frontend.bucket_regional_domain_name
     origin_id   = "${var.project_name}-s3-frontend"
 
-    custom_origin_config {
-      http_port              = 80
-      https_port             = 443
-      origin_protocol_policy = "http-only"
-      origin_ssl_protocols   = ["TLSv1.2"]
+    s3_origin_config {
+      origin_access_identity = aws_cloudfront_origin_access_identity.frontend.cloudfront_access_identity_path
     }
   }
 
@@ -63,13 +81,9 @@ resource "aws_cloudfront_distribution" "frontend" {
     target_origin_id = "${var.project_name}-s3-frontend"
 
     viewer_protocol_policy = "redirect-to-https"
+    compress               = true
 
-    forwarded_values {
-      query_string = false
-      cookies {
-        forward = "none"
-      }
-    }
+    cache_policy_id = data.aws_cloudfront_cache_policy.managed_caching_optimized.id
   }
 
   viewer_certificate {

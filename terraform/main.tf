@@ -17,7 +17,7 @@ module "compute" {
   backend_sg_id      = module.networking.backend_sg_id
   alb_sg_id          = module.networking.alb_sg_id
   instance_type      = "t3.micro"
-  ami_id             = "ami-0abcdef1234567890" # remplacer par AMI Linux 2 ou Go backend prébuild
+  ami_id             = data.aws_ami.amazon-linux.id
 }
 
 module "storage" {

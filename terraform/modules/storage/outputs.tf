@@ -1,7 +1,14 @@
 output "frontend_bucket_name" {
-  value = aws_s3_bucket.frontend.id
+  description = "S3 bucket name for frontend"
+  value       = aws_s3_bucket.frontend.id
 }
 
-output "frontend_cloudfront_domain" {
-  value = aws_cloudfront_distribution.frontend.domain_name
+output "cloudfront_domain_name" {
+  description = "CloudFront distribution domain name"
+  value       = aws_cloudfront_distribution.frontend.domain_name
+}
+
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID for cache invalidation"
+  value       = aws_cloudfront_distribution.frontend.id
 }

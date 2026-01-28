@@ -1,6 +1,40 @@
-.env
-*.tfvars
+# Terraform
 .terraform/
 *.tfstate
 *.tfstate.backup
+*.tfstate.*.backup
+*.tfplan*
+*.json.tfplan
+tfplan
+.terraform.lock.hcl
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# Variable files
+*.tfvars
+*.tfvars.json
+terraform.tfvars
+terraform.tfvars.json
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PowerShell
 *.ps1

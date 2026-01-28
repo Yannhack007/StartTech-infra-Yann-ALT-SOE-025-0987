@@ -40,21 +40,41 @@ resource "aws_lb_listener" "http" {
   }
 }
 
+# HTTPS Listener (requires ACM certificate)
+# Note: You need to create an ACM certificate in your AWS account first
+# Then uncomment this and update the certificate_arn
+/*
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  certificate_arn   = "arn:aws:acm:region:account:certificate/certificate-id"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+}
+*/
+
 resource "aws_launch_template" "backend" {
-  name_prefix            = "${var.project_name}-lt"
-  image_id               = var.ami_id
+  name_prefix            = "${var.project_name}-backend-lt-"
+  image_id               = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
-  key_name               = "muchtodo_keypair"
+
+  user_data = base64encode(file("${path.root}/../scripts/user-data.sh"))
+  
+  iam_instance_profile {
+    name = aws_iam_instance_profile.backend.name
+  }
+
   vpc_security_group_ids = [var.backend_sg_id]
 
-  user_data = <<-EOF
-              #!/bin/bash
-              sudo yum update -y
-              # Installation du backend Go, start service...
-              EOF
-
-  tags = {
-    Name = "${var.project_name}-backend"
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "${var.project_name}-backend-instance"
+    }
   }
 }
 
@@ -78,4 +98,24 @@ resource "aws_autoscaling_group" "backend" {
   health_check_type         = "ELB"
   health_check_grace_period = 60
 }
+
+
+
+data "aws_ami" "amazon-linux" {
+ most_recent = true
+
+
+ filter {
+   name   = "owner-alias"
+   values = ["amazon"]
+ }
+
+
+ filter {
+   name   = "name"
+   values = ["amzn2-ami-hvm*"]
+ }
+}
+
+
 

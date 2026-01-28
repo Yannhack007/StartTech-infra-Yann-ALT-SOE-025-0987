@@ -8,42 +8,33 @@ on:
       - 'terraform/**'
       - 'scripts/**'
       - '.github/workflows/infrastructure-deploy.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+      - 'scripts/**'
+      - '.github/workflows/infrastructure-deploy.yml'
   workflow_dispatch:
+    inputs:
+      auto_approve:
+        description: 'Auto approve and apply changes (only on main branch)'
+        required: false
+        default: 'false'
 
 env:
   TERRAFORM_VERSION: 1.6.6
+  AWS_REGION: eu-north-1
+  ARTIFACT_NAME: terraform-plan
 
 jobs:
-  terraform-validate:
-    name: Validate Terraform
+  # Job 1: Validate and Plan
+  validate-and-plan:
+    name: Validate & Plan Terraform
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
-
-      - name: Terraform Format Check
-        working-directory: terraform
-        run: terraform fmt -check -recursive
-
-      - name: Terraform Init
-        working-directory: terraform
-        run: terraform init -backend=false
-
-      - name: Terraform Validate
-        working-directory: terraform
-        run: terraform validate
-
-  terraform-plan:
-    name: Plan Terraform Changes
-    runs-on: ubuntu-latest
-    needs: terraform-validate
     outputs:
-      tfplanExitCode: ${{ steps.plan.outputs.exitcode }}
+      plan-status: ${{ steps.plan.outcome }}
+      has-changes: ${{ steps.plan.outputs.has-changes }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -52,23 +43,44 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Validate shell scripts syntax
+      - name: Validate Shell Scripts
+        run: |
+          for script in scripts/*.sh; do
+            if [ -f "$script" ]; then
+              echo "Checking syntax: $script"
+              bash -n "$script" || exit 1
+            fi
+          done
+
+      - name: Terraform Format Check
+        working-directory: terraform
+        run: terraform fmt -check -recursive
+        continue-on-error: true
 
       - name: Terraform Init
         working-directory: terraform
         run: terraform init
+
+      - name: Terraform Validate
+        working-directory: terraform
+        run: terraform validate
 
       - name: Terraform Plan
         id: plan
         working-directory: terraform
         shell: bash {0}
         run: |
+<<<<<<< Updated upstream
           echo "========================================="
           echo " Starting Terraform Plan..."
           echo "========================================="
@@ -84,11 +96,19 @@ jobs:
           elif grep -q "No changes" plan_output.txt; then
             PLAN_EXIT_CODE=0
             echo "NO CHANGES - Exit code 0"
+=======
+          terraform plan -out=tfplan -no-color > plan.txt 2>&1
+          exit_code=$?
+          
+          # Check if there are changes
+          if grep -q "No changes" plan.txt; then
+            echo "has-changes=false" >> $GITHUB_OUTPUT
+>>>>>>> Stashed changes
           else
-            PLAN_EXIT_CODE=1
-            echo "ERROR DETECTED - Exit code 1"
+            echo "has-changes=true" >> $GITHUB_OUTPUT
           fi
           
+<<<<<<< Updated upstream
           echo "exitcode=$PLAN_EXIT_CODE" >> $GITHUB_OUTPUT
           
           echo ""
@@ -121,15 +141,27 @@ jobs:
           esac
           
           echo "========================================="
+=======
+          exit $exit_code
+        continue-on-error: true
+>>>>>>> Stashed changes
 
-      - name: Upload Plan Artifact
+      - name: Save Plan Output
+        working-directory: terraform
+        run: |
+          terraform show -json tfplan > tfplan.json
+
+      # Upload plan as artifact
+      - name: Upload Terraform Plan
+        if: always()
         uses: actions/upload-artifact@v4
         if: steps.plan.outputs.exitcode == '2'
         with:
-          name: tfplan
-          path: terraform/tfplan
-          retention-days: 5
+          name: ${{ env.ARTIFACT_NAME }}
+          path: terraform/
+          retention-days: 7
 
+<<<<<<< Updated upstream
       - name: Plan Summary
         if: always()
         run: |
@@ -156,12 +188,50 @@ jobs:
           fi
 
   terraform-apply:
+=======
+      # Comment on PR with plan
+      - name: Comment Plan on PR
+        if: github.event_name == 'pull_request' && always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const planOutput = fs.readFileSync('terraform/plan.txt', 'utf8');
+            
+            // Truncate if too long
+            const truncated = planOutput.length > 60000 
+              ? planOutput.substring(0, 60000) + '\n... (truncated)'
+              : planOutput;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## Terraform Plan\n\`\`\`\n${truncated}\n\`\`\``
+            });
+
+  # Job 2: Apply (only on main, requires manual approval)
+  apply:
+>>>>>>> Stashed changes
     name: Apply Terraform Changes
+    needs: validate-and-plan
     runs-on: ubuntu-latest
+<<<<<<< Updated upstream
     needs: terraform-plan
     if: needs.terraform-plan.outputs.tfplanExitCode == '2' &&
       (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch')
     environment: production
+=======
+    if: |
+      github.ref == 'refs/heads/main' && 
+      github.event_name != 'pull_request' &&
+      needs.validate-and-plan.outputs.has-changes == 'true'
+    environment:
+      name: Production
+      # Uncomment for manual approval before apply:
+      # deployment-branch-policy:
+      #   protected-branches: true
+>>>>>>> Stashed changes
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -170,161 +240,87 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: ${{ env.TERRAFORM_VERSION }}
+          terraform_wrapper: false
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Download Terraform Plan
+        uses: actions/download-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: terraform/
 
       - name: Terraform Init
         working-directory: terraform
         run: terraform init
 
-      - name: Download Plan Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: terraform
-
-
       - name: Terraform Apply
         working-directory: terraform
         run: |
-          echo "========================================="
-          echo "Applying Terraform Changes..."
-          echo "========================================="
-          echo ""
-          echo "This will create approximately 40 resources"
-          echo "Estimated time: 10-20 minutes"
-          echo ""
-          
-          terraform apply -auto-approve tfplan
-          
-          echo ""
-          echo "========================================="
-          echo "Terraform Apply Completed!"
-          echo "========================================="
-
-      - name: Terraform Output
-        id: output
-        working-directory: terraform
-        run: |
-          echo "========================================="
-          echo "Fetching Terraform Outputs..."
-          echo "========================================="
-          
-          terraform output -json > outputs.json
-          
-          echo ""
-          echo "Infrastructure Outputs:"
-          terraform output
-          
-          echo ""
-          echo "========================================="
-
-      - name: Upload Terraform Outputs
-        uses: actions/upload-artifact@v4
-        with:
-          name: terraform-outputs
-          path: terraform/outputs.json
-          retention-days: 90
-
-      - name: Extract Key Values
-        id: extract
-        run: |
-          mkdir -p outputs
-          cp terraform/outputs.json outputs/terraform-outputs.json
-          
-          echo "========================================="
-          echo "Extracting Key Infrastructure Values..."
-          echo "========================================="
-          
-          # Extract values (handle missing outputs gracefully)
-          FRONTEND_BUCKET=$(jq -r '.frontend_bucket_name.value // "not-created"' outputs/terraform-outputs.json)
-          CLOUDFRONT_ID=$(jq -r '.cloudfront_distribution_id.value // "not-created"' outputs/terraform-outputs.json)
-          ALB_DNS=$(jq -r '.alb_dns_name.value // "not-created"' outputs/terraform-outputs.json)
-          ECR_URL=$(jq -r '.ecr_repository_url.value // "not-created"' outputs/terraform-outputs.json)
-          ASG_NAME=$(jq -r '.asg_name.value // "not-created"' outputs/terraform-outputs.json)
-          REDIS_ENDPOINT=$(jq -r '.redis_endpoint.value // "not-created"' outputs/terraform-outputs.json)
-          
-          # Save to file
-          cat > outputs/infra-vars.env << EOF
-          FRONTEND_BUCKET=$FRONTEND_BUCKET
-          CLOUDFRONT_DISTRIBUTION_ID=$CLOUDFRONT_ID
-          ALB_DNS_NAME=$ALB_DNS
-          ECR_REPOSITORY_URL=$ECR_URL
-          ASG_NAME=$ASG_NAME
-          REDIS_ENDPOINT=$REDIS_ENDPOINT
-          EOF
-          
-          echo ""
-          echo "Infrastructure Variables:"
-          cat outputs/infra-vars.env
-          echo ""
-          echo "========================================="
-          
-          # Set as outputs for other jobs
-          echo "frontend_bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
-          echo "cloudfront_id=$CLOUDFRONT_ID" >> $GITHUB_OUTPUT
-          echo "alb_dns=$ALB_DNS" >> $GITHUB_OUTPUT
-
-      - name: Upload Infrastructure Variables
-        uses: actions/upload-artifact@v4
-        with:
-          name: infra-vars
-          path: outputs/infra-vars.env
-          retention-days: 90
-
-      - name: Deployment Summary
-        if: always()
-        run: |
-          echo "## Infrastructure Deployment Summary" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "### Deployment Successful!" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Region:** \`${{ secrets.AWS_REGION }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "**Resources Created:** ~40" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### Key Infrastructure Components" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "- **Frontend Bucket:** \`${{ steps.extract.outputs.frontend_bucket }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **CloudFront ID:** \`${{ steps.extract.outputs.cloudfront_id }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "- **Load Balancer:** \`${{ steps.extract.outputs.alb_dns }}\`" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "#### Next Steps" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "1. Download the \`infra-vars\` artifact below" >> $GITHUB_STEP_SUMMARY
-            echo "2. Update GitHub secrets in \`starttech-application\` repository" >> $GITHUB_STEP_SUMMARY
-            echo "3. Deploy frontend and backend applications" >> $GITHUB_STEP_SUMMARY
+          if [ -f tfplan ]; then
+            terraform apply -no-color tfplan
           else
-            echo "### Deployment Failed" >> $GITHUB_STEP_SUMMARY
-            echo "" >> $GITHUB_STEP_SUMMARY
-            echo "Check the logs above for error details." >> $GITHUB_STEP_SUMMARY
+            echo "Plan file not found!"
+            exit 1
           fi
 
-      - name: Success Notification
+      - name: Terraform Outputs
+        id: outputs
+        working-directory: terraform
+        run: |
+          echo "## Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          terraform output -no-color >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+      - name: Upload Outputs
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-outputs
+          path: terraform/
+          retention-days: 30
+
+      - name: Notify Success
         if: success()
         run: |
+          echo "Infrastructure deployment successful!"
           echo ""
-          echo "========================================="
-          echo "INFRASTRUCTURE DEPLOYMENT COMPLETE!"
-          echo "========================================="
+          echo "## Deployment Summary"
+          echo "- Region: ${{ env.AWS_REGION }}"
+          echo "- Timestamp: $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
           echo ""
-          echo "All 40 resources have been created"
-          echo "Region: ${{ secrets.AWS_REGION }}"
-          echo ""
-          echo "Download the 'infra-vars' artifact to get:"
-          echo "   - S3 Bucket Name"
-          echo "   - CloudFront Distribution ID"
-          echo "   - Load Balancer DNS"
-          echo "   - ECR Repository URL"
-          echo "   - Auto Scaling Group Name"
-          echo "   - Redis Endpoint"
-          echo ""
-          echo "Next: Deploy your applications!"
-          echo "========================================="
+          echo "Check the deployment-outputs artifact for terraform outputs."
+
+  # Job 3: Summary
+  summary:
+    name: Deployment Summary
+    needs: [validate-and-plan, apply]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Create Summary
+        run: |
+          echo "## Infrastructure Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.validate-and-plan.outputs.plan-status }}" = "success" ]; then
+            echo "Validation: Passed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Validation: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          if [ "${{ needs.apply.result }}" = "success" ]; then
+            echo "Apply: Success" >> $GITHUB_STEP_SUMMARY
+          elif [ "${{ needs.apply.result }}" = "skipped" ]; then
+            echo "Apply: Skipped (no changes or not on main)" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "Apply: Failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Download artifacts for more details." >> $GITHUB_STEP_SUMMARY
