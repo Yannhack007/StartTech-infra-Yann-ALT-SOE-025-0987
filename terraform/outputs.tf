@@ -67,6 +67,12 @@ output "redis_port" {
   value       = module.caching.redis_port
 }
 
+# MongoDB Outputs
+output "mongodb_private_ip" {
+  description = "MongoDB instance private IP address"
+  value       = aws_instance.mongodb.private_ip
+}
+
 # Monitoring Outputs
 output "backend_log_group_name" {
   description = "CloudWatch log group for backend"
@@ -101,6 +107,7 @@ output "deployment_summary" {
     backend_url        = "http://${module.compute.alb_dns_name}"
     frontend_url       = "https://${module.storage.cloudfront_domain_name}"
     redis_endpoint     = module.caching.redis_endpoint
+    mongodb_ip         = aws_instance.mongodb.private_ip
     log_group_backend  = module.monitoring.backend_log_group_name
     ecr_repository_url = aws_ecr_repository.backend.repository_url
     region             = data.aws_region.current.name
