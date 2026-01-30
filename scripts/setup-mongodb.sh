@@ -65,5 +65,5 @@ PRIVATE_IP=$(hostname -I | awk '{print $1}')
 echo "========================================="
 echo "MongoDB READY"
 echo "URI:"
-echo "mongodb://starttech:StrongPassword2026!@$PRIVATE_IP:27017/much_todo_db?authSource=admin"
+echo "mongodb://starttech:root!@$PRIVATE_IP:27017/much_todo_db?authSource=admin"
 echo "========================================="

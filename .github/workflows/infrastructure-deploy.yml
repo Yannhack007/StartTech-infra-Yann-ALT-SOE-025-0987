@@ -312,7 +312,7 @@ jobs:
           ECR_URL=$(jq -r '.ecr_repository_url.value // "not-created"' outputs/terraform-outputs.json)
           ASG_NAME=$(jq -r '.asg_name.value // "not-created"' outputs/terraform-outputs.json)
           REDIS_ENDPOINT=$(jq -r '.redis_endpoint.value // "not-created"' outputs/terraform-outputs.json)
-          MONGO_PRIVATE_IP=$(jq -r '.mongo_private_ip.value // empty' outputs/terraform-outputs.json)
+          MONGO_PRIVATE_IP=$(jq -r '.mongodb_private_ip.value // "not-created"' outputs/terraform-outputs.json)
           
           # Save to file
           cat > outputs/infra-vars.env << EOF
