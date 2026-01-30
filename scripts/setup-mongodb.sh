@@ -5,11 +5,8 @@ echo "========================================="
 echo "MongoDB Setup on Amazon Linux 2"
 echo "========================================="
 
-# Update system
 yum update -y
 
-# Install MongoDB Community Edition
-echo "📦 Installing MongoDB..."
 cat > /etc/yum.repos.d/mongodb-org-6.0.repo << 'EOF'
 [mongodb-org-6.0]
 name=MongoDB Repository
@@ -21,52 +18,52 @@ EOF
 
 yum install -y mongodb-org
 
-# Start MongoDB
 systemctl start mongod
 systemctl enable mongod
 
-# Allow remote connections from private subnet
-echo "🔧 Configuring MongoDB..."
 cat > /etc/mongod.conf << 'EOF'
-# mongod.conf for StartTech Backend
-
-# network interface
 net:
   port: 27017
   bindIp: 0.0.0.0
 
-# storage
+security:
+  authorization: enabled
+
 storage:
   dbPath: /var/lib/mongo
   engine: wiredTiger
 
-# logging
 systemLog:
   destination: file
   logAppend: true
   path: /var/log/mongodb/mongod.log
 
-# operationProfiling
-operationProfiling:
-  mode: slowOp
-  slowOpThresholdMs: 100
-
-# process management
 processManagement:
   fork: true
 EOF
 
-# Restart MongoDB with new config
 systemctl restart mongod
 
-# Create application user
-mongo admin << 'MONGO'
+sleep 5
+
+mongo << 'MONGO'
+use admin
 db.createUser({
   user: "starttech",
-  pwd: "startech2026",
-  roles: [{role: "root", db: "admin"}]
+  pwd: "root!",
+  roles: [
+    { role: "readWrite", db: "much_todo_db" }
+  ]
 })
+
+use much_todo_db
+db.createCollection("init")
 MONGO
 
-echo "MongoDB setup complete!"
-echo "Connection: mongodb://starttech:startech2026@$(hostname -I | awk '{print $1}'):27017/admin"
+PRIVATE_IP=$(hostname -I | awk '{print $1}')
+
+echo "========================================="
+echo "MongoDB READY"
+echo "URI:"
+echo "mongodb://starttech:StrongPassword2026!@$PRIVATE_IP:27017/much_todo_db?authSource=admin"
+echo "========================================="

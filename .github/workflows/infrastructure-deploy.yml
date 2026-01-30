@@ -312,6 +312,7 @@ jobs:
           ECR_URL=$(jq -r '.ecr_repository_url.value // "not-created"' outputs/terraform-outputs.json)
           ASG_NAME=$(jq -r '.asg_name.value // "not-created"' outputs/terraform-outputs.json)
           REDIS_ENDPOINT=$(jq -r '.redis_endpoint.value // "not-created"' outputs/terraform-outputs.json)
+          MONGO_PRIVATE_IP=$(jq -r '.mongo_private_ip.value // empty' outputs/terraform-outputs.json)
           
           # Save to file
           cat > outputs/infra-vars.env << EOF
@@ -321,6 +322,7 @@ jobs:
           ECR_REPOSITORY_URL=$ECR_URL
           ASG_NAME=$ASG_NAME
           REDIS_ENDPOINT=$REDIS_ENDPOINT
+          MONGO_ENDPOINT=$MONGO_PRIVATE_IP
           EOF
           
           echo ""
@@ -333,6 +335,7 @@ jobs:
           echo "frontend_bucket=$FRONTEND_BUCKET" >> $GITHUB_OUTPUT
           echo "cloudfront_id=$CLOUDFRONT_ID" >> $GITHUB_OUTPUT
           echo "alb_dns=$ALB_DNS" >> $GITHUB_OUTPUT
+          echo "mongo_private_ip=$MONGO_PRIVATE_IP" >> $GITHUB_OUTPUT
 
       - name: Upload Infrastructure Variables
         uses: actions/upload-artifact@v4
